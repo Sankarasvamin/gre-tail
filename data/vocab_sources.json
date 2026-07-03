@@ -23,11 +23,11 @@
     "id": "open-english-wordnet",
     "name": "Open English WordNet",
     "url": "https://github.com/globalwordnet/english-wordnet",
-    "download_url": "https://en-word.net/static/english-wordnet-2025-json.zip",
+    "download_url": "https://codeload.github.com/globalwordnet/english-wordnet/zip/refs/tags/2025-edition",
     "license": "CC-BY 4.0",
-    "status": "candidate",
+    "status": "active-example-source",
     "used_for": ["definition_en", "example_en", "synonyms", "relations"],
-    "notes": "Open English WordNet is released with JSON downloads and usage examples in synset gloss data. It is a strong candidate for dictionary-derived examples when sentence-corpus examples are unavailable."
+    "notes": "The en-word.net release download is blocked by the current proxy, but the GitHub codeload source archive is reachable and contains YAML synset examples. The example builder imports only sentences that contain the target word."
   },
   {
     "id": "wiktionary-derived",

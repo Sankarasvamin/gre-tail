@@ -40,6 +40,13 @@ GRE Tail uses a build-time search and import strategy. The browser app stays off
 - Tatoeba: planned/import script source for example sentences, CC BY by default with some CC0 entries.
 - Open English WordNet: approved candidate for dictionary examples, CC-BY 4.0.
 
+## Current network findings on this PC
+
+- `github.com`, `raw.githubusercontent.com`, `api.github.com`, and `codeload.github.com` are reachable through `curl.exe --ssl-no-revoke`.
+- `downloads.tatoeba.org` currently returns proxy `503`.
+- `en-word.net` currently returns proxy `503`, but the Open English WordNet GitHub source zip is reachable through `codeload.github.com`.
+- Prefer GitHub-hosted source archives or raw files when an upstream project mirrors releases there.
+
 ## Useful searches to run manually
 
 - `site:github.com GRE vocabulary JSON license`

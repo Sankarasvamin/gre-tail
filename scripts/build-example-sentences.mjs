@@ -1,15 +1,17 @@
-import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pipeline } from "node:stream/promises";
 
 const TATOEBA_BASE = "https://downloads.tatoeba.org/exports/per_language";
+const OEWN_SOURCE_ZIP = "https://codeload.github.com/globalwordnet/english-wordnet/zip/refs/tags/2025-edition";
 const TATOEBA_FILES = {
   eng: `${TATOEBA_BASE}/eng/eng_sentences.tsv.bz2`,
   cmn: `${TATOEBA_BASE}/cmn/cmn_sentences.tsv.bz2`,
   links: `${TATOEBA_BASE}/eng/eng-cmn_links.tsv.bz2`
 };
 const vendorDir = resolve("data/vendor/tatoeba");
+const oewnVendorDir = resolve("data/vendor/oewn");
 const outputPath = resolve("data/example_sentences.json");
 const wordsPath = resolve("data/gre_words.json");
 const seedPath = resolve("data/gre_words.sample.json");
@@ -20,6 +22,17 @@ const examples = new Map();
 
 for (const example of seedExamples(seedPath)) {
   examples.set(example.word_id, example);
+}
+
+try {
+  const imported = await importOewnExamples(words);
+  for (const example of imported) {
+    if (!examples.has(example.word_id) || example.quality.score > examples.get(example.word_id).quality.score) {
+      examples.set(example.word_id, example);
+    }
+  }
+} catch (error) {
+  console.warn(`Open English WordNet import skipped: ${error.message}`);
 }
 
 try {
@@ -63,6 +76,142 @@ function seedExamples(path) {
       source_note: word.source_note || "Original local seed example.",
       quality: scoreExample(word.word, word.example_en, word.example_cn)
     }));
+}
+
+async function importOewnExamples(words) {
+  const sourceRoot = await ensureOewnSource();
+  const yamlDir = join(sourceRoot, "src", "yaml");
+  const wantedWords = new Map(words.map((word) => [word.word.toLowerCase(), word]));
+  const bestByWord = new Map();
+
+  for (const path of listFiles(yamlDir).filter((file) => /\.yaml$/i.test(file) && !/entries-|frames/.test(file))) {
+    const synsets = parseOewnSynsetYaml(readFileSync(path, "utf8"));
+    for (const synset of synsets) {
+      const matchedWords = synset.members
+        .map((member) => wantedWords.get(member.toLowerCase().replace(/_/g, " ")))
+        .filter(Boolean);
+      if (matchedWords.length === 0 || synset.examples.length === 0) {
+        continue;
+      }
+
+      for (const word of matchedWords) {
+        const sentence = chooseBestSentence(word.word, synset.examples);
+        if (!sentence) {
+          continue;
+        }
+        const example = {
+          id: `example-${word.id}-oewn-${synset.id}`,
+          word_id: word.id,
+          word: word.word,
+          example_en: sentence,
+          example_cn: `译文待整理：本句使用 “${word.word}” 表达“${stripPartOfSpeech(word.correct_cn)}”这一含义。`,
+          source_type: "open_licensed",
+          source_name: "Open English WordNet",
+          source_url: `https://github.com/globalwordnet/english-wordnet/tree/2025-edition`,
+          license: "WordNet License + CC-BY 4.0",
+          attribution: `Open English WordNet synset ${synset.id}`,
+          source_note: "Imported from Open English WordNet source YAML. Chinese line is a local study note, not a sentence-level translation.",
+          quality: scoreExample(word.word, sentence, word.correct_cn)
+        };
+        const current = bestByWord.get(word.id);
+        if (!current || example.quality.score > current.quality.score) {
+          bestByWord.set(word.id, example);
+        }
+      }
+    }
+  }
+
+  return Array.from(bestByWord.values());
+}
+
+async function ensureOewnSource() {
+  mkdirSync(oewnVendorDir, { recursive: true });
+  const extracted = readdirSync(oewnVendorDir)
+    .map((name) => join(oewnVendorDir, name))
+    .find((path) => statSync(path).isDirectory() && /english-wordnet/.test(path));
+  if (extracted) {
+    return extracted;
+  }
+
+  const zipPath = join(oewnVendorDir, "english-wordnet-2025-edition.zip");
+  await download(OEWN_SOURCE_ZIP, zipPath);
+  const result = spawnSync("tar.exe", ["-xf", zipPath, "-C", oewnVendorDir], {
+    stdio: "inherit"
+  });
+  if (result.status !== 0) {
+    throw new Error("Failed to extract Open English WordNet source zip.");
+  }
+
+  const sourceRoot = readdirSync(oewnVendorDir)
+    .map((name) => join(oewnVendorDir, name))
+    .find((path) => statSync(path).isDirectory() && /english-wordnet/.test(path));
+  if (!sourceRoot) {
+    throw new Error("Open English WordNet source directory was not found after extraction.");
+  }
+  return sourceRoot;
+}
+
+function parseOewnSynsetYaml(text) {
+  const synsets = [];
+  let current = null;
+  let section = "";
+
+  for (const line of text.split(/\r?\n/)) {
+    const idMatch = /^([0-9]{8}-[nvars]):\s*$/.exec(line);
+    if (idMatch) {
+      if (current) synsets.push(current);
+      current = { id: idMatch[1], members: [], examples: [] };
+      section = "";
+      continue;
+    }
+    if (!current) continue;
+
+    const sectionMatch = /^  ([A-Za-z_]+):\s*$/.exec(line);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      continue;
+    }
+
+    const itemMatch = /^  - (.+)$/.exec(line);
+    if (itemMatch && section === "members") {
+      current.members.push(unquoteYamlScalar(itemMatch[1]));
+      continue;
+    }
+    if (itemMatch && section === "example") {
+      current.examples.push(unquoteYamlScalar(itemMatch[1]));
+    }
+  }
+
+  if (current) synsets.push(current);
+  return synsets;
+}
+
+function chooseBestSentence(word, examples) {
+  return examples
+    .filter((sentence) => isGoodEnglishSentence(sentence))
+    .filter((sentence) => containsWord(sentence, word))
+    .sort((left, right) => scoreExample(word, right, "").score - scoreExample(word, left, "").score)[0] || "";
+}
+
+function listFiles(root) {
+  const files = [];
+  for (const name of readdirSync(root)) {
+    const path = join(root, name);
+    if (statSync(path).isDirectory()) {
+      files.push(...listFiles(path));
+    } else {
+      files.push(path);
+    }
+  }
+  return files;
+}
+
+function unquoteYamlScalar(value) {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith("'") && trimmed.endsWith("'")) || (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+    return trimmed.slice(1, -1).replace(/''/g, "'");
+  }
+  return trimmed;
 }
 
 function generatedOriginalExample(word) {
@@ -276,7 +425,7 @@ function isGoodChineseSentence(text) {
 function scoreExample(word, exampleEn, exampleCn) {
   const tokenCount = exampleEn.split(/\s+/).filter(Boolean).length;
   let score = 0;
-  if (new RegExp(`(^|[^a-z])${escapeRegex(word)}([^a-z]|$)`, "i").test(exampleEn)) score += 35;
+  if (containsWord(exampleEn, word)) score += 35;
   if (/^[A-Z"']/.test(exampleEn)) score += 10;
   if (/[.!?]"?$/.test(exampleEn)) score += 15;
   if (tokenCount >= 8 && tokenCount <= 20) score += 20;
@@ -284,10 +433,14 @@ function scoreExample(word, exampleEn, exampleCn) {
   if (!/[()[\]{}]/.test(exampleEn)) score += 5;
   return {
     is_complete_sentence: /[.!?]"?$/.test(exampleEn),
-    contains_word: new RegExp(`(^|[^a-z])${escapeRegex(word)}([^a-z]|$)`, "i").test(exampleEn),
+    contains_word: containsWord(exampleEn, word),
     has_translation: Boolean(exampleCn),
     score
   };
+}
+
+function containsWord(sentence, word) {
+  return new RegExp(`(^|[^a-z])${escapeRegex(word)}([^a-z]|$)`, "i").test(sentence);
 }
 
 function escapeRegex(value) {

@@ -127,6 +127,7 @@ node scripts/validate-examples.mjs
 生成逻辑：
 
 - 优先保留本地原创 seed 例句。
+- 从 Open English WordNet GitHub source archive 中抽取包含目标词的真实英文例句。
 - 网络可用时，从 Tatoeba 官方导出中筛选包含目标 GRE 单词的英文完整句，并匹配中文译句。
 - 如果开放语料下载失败，则为每个词生成一条透明标注的原创学习笔记句，避免页面空白；这些 fallback 应逐步替换为人工整理、原创自然句、公版句或 Tatoeba 句。
 - 不自动抓取 Reddit、字幕站、台词站、现代小说网站或论坛内容。
