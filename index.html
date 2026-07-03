@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GRE Tail</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="practice-panel" aria-labelledby="app-title">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">GRE Tail</p>
+            <h1 id="app-title">四选一背词</h1>
+          </div>
+          <button id="reset-progress" class="ghost-button" type="button">清空进度</button>
+        </header>
+
+        <section class="stats-grid" aria-label="学习统计">
+          <div class="stat-item">
+            <span class="stat-label">今日完成</span>
+            <strong id="stat-today">0</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">总答题</span>
+            <strong id="stat-total">0</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">正确率</span>
+            <strong id="stat-accuracy">0%</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">错词</span>
+            <strong id="stat-wrong">0</strong>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">已掌握</span>
+            <strong id="stat-mastered">0</strong>
+          </div>
+        </section>
+
+        <section id="loading-state" class="notice">正在加载本地词库...</section>
+        <section id="error-state" class="notice error" hidden></section>
+
+        <section id="quiz" class="quiz" hidden>
+          <div class="word-row">
+            <span id="word-progress" class="word-progress"></span>
+            <h2 id="word" class="word"></h2>
+          </div>
+
+          <div id="options" class="options" aria-label="中文释义选项"></div>
+
+          <section id="feedback" class="feedback" hidden aria-live="polite">
+            <div id="result-badge" class="result-badge"></div>
+            <dl class="answer-details">
+              <div>
+                <dt>正确答案</dt>
+                <dd id="correct-answer"></dd>
+              </div>
+              <div>
+                <dt>英文释义</dt>
+                <dd id="definition-en"></dd>
+              </div>
+            </dl>
+
+            <div class="option-notes">
+              <h3>选项说明</h3>
+              <ul id="option-explanations"></ul>
+            </div>
+
+            <div class="example-block">
+              <h3>例句</h3>
+              <p id="example-en" class="example-en"></p>
+              <p id="example-cn" class="example-cn"></p>
+              <p id="example-source" class="example-source"></p>
+            </div>
+
+            <button id="next-question" class="primary-button" type="button">下一题</button>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="./src/app.js" defer></script>
+  </body>
+</html>
