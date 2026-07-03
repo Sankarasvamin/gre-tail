@@ -52,6 +52,12 @@ $env:MAX_WORDS=2000; node scripts/build-gre-vocab.mjs
 node scripts/validate-vocab.mjs
 ```
 
+检查登记过的数据源：
+
+```powershell
+node scripts/check-data-sources.mjs
+```
+
 也可以把自己的词库保存为 `data/gre_words.json`，或在 `src/app.js` 顶部修改：
 
 ```js
@@ -124,6 +130,8 @@ node scripts/validate-examples.mjs
 - 网络可用时，从 Tatoeba 官方导出中筛选包含目标 GRE 单词的英文完整句，并匹配中文译句。
 - 如果开放语料下载失败，则为每个词生成一条透明标注的原创学习笔记句，避免页面空白；这些 fallback 应逐步替换为人工整理、原创自然句、公版句或 Tatoeba 句。
 - 不自动抓取 Reddit、字幕站、台词站、现代小说网站或论坛内容。
+
+更完整的数据策略见 `docs/data-strategy.md`。原则是构建期搜索和检查开放来源，运行时只读本地 JSON。
 
 ## 词库来源
 

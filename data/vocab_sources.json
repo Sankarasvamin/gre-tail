@@ -18,5 +18,25 @@
     "status": "planned-import",
     "used_for": ["example_en", "example_cn", "example_source"],
     "notes": "Official exports provide complete learner-oriented sentences and translation links. Import script selects one short complete sentence per word when downloads are reachable."
+  },
+  {
+    "id": "open-english-wordnet",
+    "name": "Open English WordNet",
+    "url": "https://github.com/globalwordnet/english-wordnet",
+    "download_url": "https://en-word.net/static/english-wordnet-2025-json.zip",
+    "license": "CC-BY 4.0",
+    "status": "candidate",
+    "used_for": ["definition_en", "example_en", "synonyms", "relations"],
+    "notes": "Open English WordNet is released with JSON downloads and usage examples in synset gloss data. It is a strong candidate for dictionary-derived examples when sentence-corpus examples are unavailable."
+  },
+  {
+    "id": "wiktionary-derived",
+    "name": "Wiktionary-derived datasets",
+    "url": "https://www.wiktionary.org/",
+    "download_url": "https://dumps.wikimedia.org/",
+    "license": "CC BY-SA / GFDL depending on dump content and derivative dataset",
+    "status": "candidate",
+    "used_for": ["definition_en", "example_en", "usage_notes", "translations"],
+    "notes": "Use only dump-based or clearly licensed parsed datasets. Avoid ad hoc scraping of individual pages."
   }
 ]

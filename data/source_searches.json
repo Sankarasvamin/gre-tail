@@ -1,0 +1,27 @@
+[
+  {
+    "id": "github-gre-json-license",
+    "purpose": "Find licensed GRE vocabulary repositories with structured JSON data.",
+    "url": "https://github.com/search?q=GRE+vocabulary+JSON+license&type=repositories"
+  },
+  {
+    "id": "github-gre-csv-mit",
+    "purpose": "Find MIT-licensed GRE CSV word lists.",
+    "url": "https://github.com/search?q=GRE+word+list+CSV+MIT&type=repositories"
+  },
+  {
+    "id": "github-gre-examples",
+    "purpose": "Find GRE repositories that already include definitions and example sentences.",
+    "url": "https://github.com/search?q=GRE+vocabulary+definitions+examples&type=repositories"
+  },
+  {
+    "id": "wordnet-json-examples",
+    "purpose": "Check Open English WordNet JSON release and example availability.",
+    "url": "https://github.com/globalwordnet/english-wordnet"
+  },
+  {
+    "id": "wiktionary-derived-examples",
+    "purpose": "Check dump-based or parsed Wiktionary datasets with licenses.",
+    "url": "https://dumps.wikimedia.org/enwiktionary/"
+  }
+]
