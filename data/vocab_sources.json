@@ -8,5 +8,15 @@
     "status": "active",
     "used_for": ["word", "phonetic", "definition_en", "correct_cn", "pos", "exam_tags", "frequency"],
     "notes": "Primary local dictionary source. Build script filters rows whose tag column contains gre."
+  },
+  {
+    "id": "tatoeba",
+    "name": "Tatoeba",
+    "url": "https://tatoeba.org/",
+    "download_url": "https://downloads.tatoeba.org/exports/",
+    "license": "CC BY 2.0 by default; some sentences CC0",
+    "status": "planned-import",
+    "used_for": ["example_en", "example_cn", "example_source"],
+    "notes": "Official exports provide complete learner-oriented sentences and translation links. Import script selects one short complete sentence per word when downloads are reachable."
   }
 ]

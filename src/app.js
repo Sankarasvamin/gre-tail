@@ -1,14 +1,16 @@
 "use strict";
 
 const WORDS_URL = "./data/gre_words.json";
+const EXAMPLES_URL = "./data/example_sentences.json";
 const PROGRESS_KEY = "gre-tail-progress-v1";
 const SESSION_KEY = "gre-tail-session-v1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MASTERED_LEVEL = 3;
-const VALID_SOURCE_TYPES = new Set(["original", "public_domain", "manual_web_quote", "user_note"]);
+const VALID_SOURCE_TYPES = new Set(["original", "public_domain", "open_licensed", "manual_web_quote", "user_note"]);
 
 const state = {
   words: [],
+  examplesByWordId: new Map(),
   progress: {},
   session: {
     date: todayKey(),
@@ -51,7 +53,9 @@ async function init() {
   renderStats();
 
   try {
-    state.words = await loadWords();
+    const [words, examples] = await Promise.all([loadWords(), loadExamples()]);
+    state.words = words;
+    state.examplesByWordId = indexExamples(examples);
     validateWords(state.words);
     els.loading.hidden = true;
     els.quiz.hidden = false;
@@ -82,6 +86,33 @@ async function loadWords() {
     throw new Error(`无法读取词库：${response.status} ${response.statusText}`);
   }
   return response.json();
+}
+
+async function loadExamples() {
+  try {
+    const response = await fetch(EXAMPLES_URL, { cache: "no-store" });
+    if (!response.ok) {
+      return [];
+    }
+    const examples = await response.json();
+    return Array.isArray(examples) ? examples : [];
+  } catch {
+    return [];
+  }
+}
+
+function indexExamples(examples) {
+  const map = new Map();
+  examples.forEach((example) => {
+    if (!example.word_id || !example.example_en) {
+      return;
+    }
+    const current = map.get(example.word_id);
+    if (!current || getExampleScore(example) > getExampleScore(current)) {
+      map.set(example.word_id, example);
+    }
+  });
+  return map;
 }
 
 function validateWords(words) {
@@ -305,6 +336,7 @@ function lockOptions(selectedOption, selectedButton) {
 }
 
 function renderFeedback(question, selectedOption, isCorrect) {
+  const example = getExampleForWord(question.word);
   els.feedback.hidden = false;
   els.resultBadge.className = `result-badge ${isCorrect ? "correct" : "wrong"}`;
   els.resultBadge.textContent = isCorrect ? "正确" : "错误";
@@ -320,16 +352,36 @@ function renderFeedback(question, selectedOption, isCorrect) {
     els.optionExplanations.append(item);
   });
 
-  els.exampleEn.textContent = question.word.example_en || "暂无英文例句。";
-  els.exampleCn.textContent = question.word.example_cn || "暂无中文翻译。";
-  els.exampleSource.textContent = formatExampleSource(question.word);
+  els.exampleEn.textContent = example.example_en || "暂无英文例句。";
+  els.exampleCn.textContent = example.example_cn || "暂无中文翻译。";
+  els.exampleSource.textContent = formatExampleSource(example);
 }
 
-function formatExampleSource(word) {
-  const type = word.source_type || "user_note";
-  const source = word.example_source || "未标注来源";
-  const note = word.source_note ? ` · ${word.source_note}` : "";
-  return `来源：${source} · 类型：${type}${note}`;
+function getExampleForWord(word) {
+  const libraryExample = state.examplesByWordId.get(word.id);
+  if (libraryExample) {
+    return libraryExample;
+  }
+
+  return {
+    example_en: word.example_en || "",
+    example_cn: word.example_cn || "",
+    source_type: word.source_type || "user_note",
+    source_name: word.example_source || "未标注来源",
+    source_note: word.source_note || ""
+  };
+}
+
+function getExampleScore(example) {
+  return Number(example.quality?.score) || 0;
+}
+
+function formatExampleSource(example) {
+  const type = example.source_type || "user_note";
+  const source = example.source_name || example.example_source || "未标注来源";
+  const license = example.license ? ` · 许可：${example.license}` : "";
+  const note = example.source_note ? ` · ${example.source_note}` : "";
+  return `来源：${source} · 类型：${type}${license}${note}`;
 }
 
 function renderStats() {

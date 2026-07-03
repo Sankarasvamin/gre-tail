@@ -101,11 +101,32 @@ const WORDS_URL = "./data/gre_words.json";
 
 - `original`：原创例句。
 - `public_domain`：公版文本例句。
+- `open_licensed`：明确开放许可的语料，例如 CC BY 句库，必须保留来源和许可证。
 - `manual_web_quote`：用户人工选择的少量公开可见短句，仅作本地个人学习材料。
 - `user_note`：用户自己整理或改写的学习例句。
 
 `manual_web_quote` 不应当用于批量抓取、全文保存、台词库、字幕库或小说摘录库。每个单词最多保留一条例句，`example_source` 写简短来源说明即可，中文翻译由用户自行整理。
 
+## 例句库
+
+默认例句库是 `data/example_sentences.json`，WebApp 会优先使用它；词条内的 `example_en` / `example_cn` 只作为 fallback。
+
+重新生成例句库：
+
+```powershell
+node scripts/build-example-sentences.mjs
+node scripts/validate-examples.mjs
+```
+
+生成逻辑：
+
+- 优先保留本地原创 seed 例句。
+- 网络可用时，从 Tatoeba 官方导出中筛选包含目标 GRE 单词的英文完整句，并匹配中文译句。
+- 如果开放语料下载失败，则为每个词生成一条透明标注的原创学习笔记句，避免页面空白；这些 fallback 应逐步替换为人工整理、原创自然句、公版句或 Tatoeba 句。
+- 不自动抓取 Reddit、字幕站、台词站、现代小说网站或论坛内容。
+
 ## 词库来源
 
 默认大词库由 ECDICT 本地词典数据筛选生成。ECDICT 提供英文释义、中文释义和考试标签，仓库许可证为 MIT。生成脚本只下载公开 CSV 数据并做本地格式转换，不抓取 Reddit、影视字幕站、小说网站或现代版权文本网站。
+
+例句库优先支持 Tatoeba 官方导出。Tatoeba 是面向语言学习者的开放例句库，句子默认 CC BY，部分 CC0；项目下载页提供按语言拆分的句子和翻译链接文件。

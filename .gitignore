@@ -1,6 +1,7 @@
 .agents/
 node_modules/
 data/vendor/
+tools/
 .env
 .env.*
 .DS_Store

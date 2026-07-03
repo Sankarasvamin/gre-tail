@@ -13,7 +13,7 @@
 - `example_en`: one local learning example, or an empty string if not yet curated.
 - `example_cn`: user-curated Chinese translation, or an empty string.
 - `example_source`: short source note.
-- `source_type`: one of `original`, `public_domain`, `manual_web_quote`, `user_note`.
+- `source_type`: one of `original`, `public_domain`, `open_licensed`, `manual_web_quote`, `user_note`.
 - `difficulty`: `easy`, `medium`, or `hard`.
 - `tags`: display tags.
 
@@ -30,4 +30,6 @@
 
 ## Source rules
 
-`manual_web_quote` is only for a user-selected short quote in a local personal study file. Do not bulk crawl websites, save full copyrighted texts, or build subtitle/quote databases. For public redistribution, prefer `original`, `public_domain`, or licensed dictionary fields with clear attribution.
+`open_licensed` is for sources such as Tatoeba where the corpus has an explicit reuse license such as CC BY. Keep attribution fields and source URLs.
+
+`manual_web_quote` is only for a user-selected short quote in a local personal study file. Do not bulk crawl websites, save full copyrighted texts, or build subtitle/quote databases. For public redistribution, prefer `original`, `public_domain`, `open_licensed`, or licensed dictionary fields with clear attribution.

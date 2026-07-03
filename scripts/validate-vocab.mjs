@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const path = resolve(process.argv[2] || "data/gre_words.json");
-const validSourceTypes = new Set(["original", "public_domain", "manual_web_quote", "user_note"]);
+const validSourceTypes = new Set(["original", "public_domain", "open_licensed", "manual_web_quote", "user_note"]);
 const words = JSON.parse(readFileSync(path, "utf8"));
 
 const errors = [];
