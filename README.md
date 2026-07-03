@@ -122,6 +122,7 @@ const WORDS_URL = "./data/gre_words.json";
 ```powershell
 node scripts/build-example-sentences.mjs
 node scripts/validate-examples.mjs
+node scripts/report-missing-examples.mjs
 ```
 
 生成逻辑：
@@ -129,7 +130,8 @@ node scripts/validate-examples.mjs
 - 优先保留本地原创 seed 例句。
 - 从 Open English WordNet GitHub source archive 中抽取包含目标词的真实英文例句。
 - 网络可用时，从 Tatoeba 官方导出中筛选包含目标 GRE 单词的英文完整句，并匹配中文译句。
-- 如果开放语料下载失败，则为每个词生成一条透明标注的原创学习笔记句，避免页面空白；这些 fallback 应逐步替换为人工整理、原创自然句、公版句或 Tatoeba 句。
+- 默认不生成模板占位例句；找不到高质量例句时，前端会明确显示暂无高质量例句。
+- 如果确实需要临时占位，可设置 `INCLUDE_GENERATED_EXAMPLE_FALLBACK=1`，但这些句子不应作为正式例句提交。
 - 不自动抓取 Reddit、字幕站、台词站、现代小说网站或论坛内容。
 
 更完整的数据策略见 `docs/data-strategy.md`。原则是构建期搜索和检查开放来源，运行时只读本地 JSON。

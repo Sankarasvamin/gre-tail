@@ -33,4 +33,14 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
+const generatedFallbacks = examples.filter((example) => example.quality?.generated_fallback).length;
+if (generatedFallbacks > 0 && process.env.ALLOW_GENERATED_EXAMPLE_FALLBACK !== "1") {
+  errors.push(`generated fallback examples are disabled by default: ${generatedFallbacks} found`);
+}
+
+if (errors.length > 0) {
+  console.error(errors.join("\n"));
+  process.exit(1);
+}
+
 console.log(`Validated ${examples.length} examples in ${examplesPath}`);

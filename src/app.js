@@ -352,8 +352,8 @@ function renderFeedback(question, selectedOption, isCorrect) {
     els.optionExplanations.append(item);
   });
 
-  els.exampleEn.textContent = example.example_en || "暂无英文例句。";
-  els.exampleCn.textContent = example.example_cn || "暂无中文翻译。";
+  els.exampleEn.textContent = example.example_en || "暂无高质量英文例句。";
+  els.exampleCn.textContent = example.example_cn || "可以稍后在 data/example_sentences.json 中补充人工整理或开放许可例句。";
   els.exampleSource.textContent = formatExampleSource(example);
 }
 
@@ -368,7 +368,7 @@ function getExampleForWord(word) {
     example_cn: word.example_cn || "",
     source_type: word.source_type || "user_note",
     source_name: word.example_source || "未标注来源",
-    source_note: word.source_note || ""
+    source_note: word.example_en ? word.source_note || "" : "No curated sentence is available for this word yet."
   };
 }
 

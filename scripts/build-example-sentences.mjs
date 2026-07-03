@@ -16,6 +16,7 @@ const outputPath = resolve("data/example_sentences.json");
 const wordsPath = resolve("data/gre_words.json");
 const seedPath = resolve("data/gre_words.sample.json");
 const maxWords = Number(process.env.EXAMPLE_MAX_WORDS) || 1200;
+const includeGeneratedFallback = process.env.INCLUDE_GENERATED_EXAMPLE_FALLBACK === "1";
 
 const words = JSON.parse(readFileSync(wordsPath, "utf8")).slice(0, maxWords);
 const examples = new Map();
@@ -48,7 +49,7 @@ try {
 }
 
 const output = words
-  .map((word) => examples.get(word.id) || generatedOriginalExample(word))
+  .map((word) => examples.get(word.id) || (includeGeneratedFallback ? generatedOriginalExample(word) : null))
   .filter(Boolean)
   .sort((left, right) => left.word.localeCompare(right.word));
 
@@ -401,8 +402,7 @@ function parseTsvLine(line) {
 function findMatchedWord(sentence, wantedWords) {
   const lower = sentence.toLowerCase();
   for (const [word, entry] of wantedWords) {
-    const pattern = new RegExp(`(^|[^a-z])${escapeRegex(word)}([^a-z]|$)`, "i");
-    if (pattern.test(lower)) {
+    if (containsWord(lower, word)) {
       return entry;
     }
   }
@@ -440,7 +440,29 @@ function scoreExample(word, exampleEn, exampleCn) {
 }
 
 function containsWord(sentence, word) {
-  return new RegExp(`(^|[^a-z])${escapeRegex(word)}([^a-z]|$)`, "i").test(sentence);
+  return wordForms(word).some((form) => {
+    return new RegExp(`(^|[^a-z])${escapeRegex(form)}([^a-z]|$)`, "i").test(sentence);
+  });
+}
+
+function wordForms(word) {
+  const lower = word.toLowerCase();
+  const forms = new Set([lower]);
+  if (/^[a-z]+$/.test(lower)) {
+    forms.add(`${lower}s`);
+    forms.add(`${lower}es`);
+    forms.add(`${lower}ed`);
+    forms.add(`${lower}ing`);
+    if (lower.endsWith("e")) {
+      forms.add(`${lower.slice(0, -1)}ed`);
+      forms.add(`${lower.slice(0, -1)}ing`);
+    }
+    if (lower.endsWith("y") && lower.length > 2) {
+      forms.add(`${lower.slice(0, -1)}ies`);
+      forms.add(`${lower.slice(0, -1)}ied`);
+    }
+  }
+  return Array.from(forms);
 }
 
 function escapeRegex(value) {

@@ -22,8 +22,9 @@ GRE Tail uses a build-time search and import strategy. The browser app stays off
    - Record the repository URL, license, fields imported, and transformation script.
 
 5. **Generated local fallback**
-   - Only used to prevent blank UI when no sentence source is available.
-   - Must be marked as generated fallback and should be replaced.
+   - Disabled by default.
+   - Only allowed for temporary local testing with `INCLUDE_GENERATED_EXAMPLE_FALLBACK=1`.
+   - Must not be treated as a real example sentence.
 
 ## Search rules
 
@@ -31,6 +32,7 @@ GRE Tail uses a build-time search and import strategy. The browser app stays off
 - Prefer exact word matching with boundaries.
 - Prefer complete sentences: capitalized start, final punctuation, 6-26 English words.
 - Prefer examples with a human Chinese translation from an open corpus.
+- Do not insert a word into a generic template and call it an example.
 - Do not bulk crawl Reddit, subtitle sites, script sites, forums, modern novels, or other copyrighted text sites.
 - `manual_web_quote` is only for user-selected short quotes saved locally by the user.
 
