@@ -23,7 +23,12 @@ http://localhost:5173
 - `index.html`：练习页结构。
 - `styles.css`：页面样式。
 - `src/app.js`：题目选择、答案判断、进度更新、复习调度、统计渲染。
+- `data/gre_words.json`：默认 GRE 词库，当前由 ECDICT 筛选生成。
 - `data/gre_words.sample.json`：示例本地词库。
+- `data/vocab_sources.json`：词库来源、许可证和用途说明。
+- `docs/vocab-schema.md`：词条字段设计说明。
+- `scripts/build-gre-vocab.mjs`：从公开词典源生成本地 GRE 词库。
+- `scripts/validate-vocab.mjs`：校验本地词库结构和基本质量。
 
 ## 替换词库
 
@@ -41,6 +46,12 @@ node scripts/build-gre-vocab.mjs
 $env:MAX_WORDS=2000; node scripts/build-gre-vocab.mjs
 ```
 
+生成后校验词库：
+
+```powershell
+node scripts/validate-vocab.mjs
+```
+
 也可以把自己的词库保存为 `data/gre_words.json`，或在 `src/app.js` 顶部修改：
 
 ```js
@@ -51,10 +62,15 @@ const WORDS_URL = "./data/gre_words.json";
 
 ```json
 {
+  "schema_version": 2,
   "id": "equivocal",
   "word": "equivocal",
+  "phonetic": "",
+  "pos": "adj",
   "correct_cn": "模棱两可的，含糊的",
   "wrong_options_cn": ["慷慨的", "脆弱的", "迅速的"],
+  "translations_cn": ["模棱两可的，含糊的"],
+  "definitions_en": ["unclear, ambiguous, or open to more than one interpretation"],
   "definition_en": "unclear, ambiguous, or open to more than one interpretation",
   "example_en": "His answer was so equivocal that nobody knew whether he had agreed or refused.",
   "example_cn": "他的回答非常模棱两可，没人知道他到底是同意了还是拒绝了。",
@@ -62,9 +78,24 @@ const WORDS_URL = "./data/gre_words.json";
   "source_type": "original",
   "source_note": "",
   "difficulty": "medium",
-  "tags": ["GRE", "ambiguity"]
+  "frequency": {
+    "bnc": null,
+    "contemporary": null
+  },
+  "exam_tags": ["gre"],
+  "tags": ["GRE", "ambiguity"],
+  "sources": [
+    {
+      "name": "manual",
+      "url": "",
+      "license": "user local note",
+      "fields": ["example_en", "example_cn"]
+    }
+  ]
 }
 ```
+
+完整字段说明见 `docs/vocab-schema.md`。MVP 前端仍只要求 `id`、`word`、`correct_cn`、`wrong_options_cn`、`definition_en`、例句字段和 `source_type`，但增强字段可以用于后续筛选、排序、导入合并和更好的选项解释。
 
 `source_type` 支持：
 

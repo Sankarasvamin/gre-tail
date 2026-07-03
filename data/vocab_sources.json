@@ -1,0 +1,12 @@
+[
+  {
+    "id": "ecdict",
+    "name": "ECDICT",
+    "url": "https://github.com/skywind3000/ECDICT",
+    "download_url": "https://raw.githubusercontent.com/skywind3000/ECDICT/master/ecdict.csv",
+    "license": "MIT",
+    "status": "active",
+    "used_for": ["word", "phonetic", "definition_en", "correct_cn", "pos", "exam_tags", "frequency"],
+    "notes": "Primary local dictionary source. Build script filters rows whose tag column contains gre."
+  }
+]

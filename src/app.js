@@ -105,7 +105,7 @@ function validateWords(words) {
 function showLoadError(error) {
   els.loading.hidden = true;
   els.error.hidden = false;
-  els.error.textContent = `${error.message} 请通过 localhost 静态服务器打开本应用，例如 python -m http.server 5173。`;
+  els.error.textContent = `${error.message} 请通过 localhost 静态服务器打开本应用，例如 node scripts/dev-server.mjs。`;
 }
 
 function showNextQuestion() {
@@ -163,33 +163,53 @@ function buildOptions(word, allWords) {
   optionMap.set(word.correct_cn, {
     text: word.correct_cn,
     wordId: word.id,
+    word: word.word,
     isCorrect: true,
-    explanation: `正确释义：${word.correct_cn}`
+    explanation: `正确释义：${word.correct_cn}`,
+    definitionEn: word.definition_en
   });
 
   const localWrongOptions = Array.isArray(word.wrong_options_cn) ? word.wrong_options_cn : [];
+  const localCandidateMap = new Map(
+    (Array.isArray(word.distractor_candidates) ? word.distractor_candidates : [])
+      .map((candidate) => [candidate.correct_cn, candidate])
+  );
+
   localWrongOptions.forEach((text) => {
-    addWrongOption(optionMap, text, "本题内置干扰项");
+    const candidate = localCandidateMap.get(text);
+    addWrongOption(optionMap, {
+      text,
+      word: candidate?.word || "",
+      definitionEn: candidate?.definition_en || "",
+      note: candidate?.word ? `来自 ${candidate.word}` : "本题内置干扰项"
+    });
   });
 
   shuffle(allWords).forEach((candidate) => {
     if (candidate.id !== word.id) {
-      addWrongOption(optionMap, candidate.correct_cn, `来自 ${candidate.word} 的释义`);
+      addWrongOption(optionMap, {
+        text: candidate.correct_cn,
+        word: candidate.word,
+        definitionEn: candidate.definition_en,
+        note: `来自 ${candidate.word}`
+      });
     }
   });
 
   return shuffle(Array.from(optionMap.values()).slice(0, 4));
 }
 
-function addWrongOption(optionMap, text, note) {
+function addWrongOption(optionMap, { text, word, definitionEn, note }) {
   if (!text || optionMap.has(text) || optionMap.size >= 4) {
     return;
   }
   optionMap.set(text, {
     text,
     wordId: null,
+    word,
     isCorrect: false,
-    explanation: `干扰项：${note}`
+    explanation: `干扰项：${note}`,
+    definitionEn
   });
 }
 
@@ -295,7 +315,8 @@ function renderFeedback(question, selectedOption, isCorrect) {
   question.options.forEach((option) => {
     const item = document.createElement("li");
     const prefix = option.isCorrect ? "正确选项" : option.text === selectedOption.text ? "你的选择" : "干扰项";
-    item.textContent = `${option.text}：${prefix}。${option.explanation}`;
+    const definition = option.definitionEn ? ` 英文释义：${option.definitionEn}` : "";
+    item.textContent = `${option.text}：${prefix}。${option.explanation}.${definition}`;
     els.optionExplanations.append(item);
   });
 
