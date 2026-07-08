@@ -470,15 +470,16 @@ function getFrequencyWeight(word) {
     .map((rank) => Number(rank))
     .filter((rank) => Number.isFinite(rank) && rank > 0);
   if (ranks.length === 0) {
-    return 1;
+    return 5;
   }
 
   const averageRank = ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
-  if (averageRank <= 3000) return 8;
-  if (averageRank <= 8000) return 6;
-  if (averageRank <= 15000) return 4;
-  if (averageRank <= 30000) return 2;
-  return 1;
+  if (averageRank >= 40000) return 6;
+  if (averageRank >= 30000) return 5;
+  if (averageRank >= 20000) return 4;
+  if (averageRank >= 12000) return 2.5;
+  if (averageRank >= 8000) return 1.2;
+  return 0.4;
 }
 
 function getDifficultyWeight(word) {

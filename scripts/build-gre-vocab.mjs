@@ -9,7 +9,8 @@ const ECDICT_LICENSE = "MIT";
 const rawPath = resolve("data/vendor/ecdict.csv");
 const outputPath = resolve("data/gre_words.json");
 const maxWords = Number(process.env.MAX_WORDS) || 1200;
-const BASIC_EXAM_TAGS = new Set(["zk", "gk", "cet4"]);
+const MIN_WORD_LENGTH = 4;
+const MAX_WORD_LENGTH = 16;
 
 const existingExamples = loadExistingExamples(resolve("data/gre_words.sample.json"));
 
@@ -27,7 +28,7 @@ const importedWords = records
   .map((row) => rowToWord(row, columns))
   .filter(Boolean)
   .filter(isGreStudyWord)
-  .sort((left, right) => studyPriority(left) - studyPriority(right) || left.word.localeCompare(right.word))
+  .sort((left, right) => hardStudyScore(right) - hardStudyScore(left) || left.word.localeCompare(right.word))
   .slice(0, maxWords);
 if (importedWords.length < 4) {
   throw new Error(`Only found ${importedWords.length} GRE words; refusing to overwrite ${outputPath}.`);
@@ -141,14 +142,19 @@ function inferDifficulty(word, tag) {
 }
 
 function isGreStudyWord(word) {
-  return !(word.exam_tags || []).some((tag) => BASIC_EXAM_TAGS.has(tag));
+  return (word.exam_tags || []).length === 1
+    && word.exam_tags[0] === "gre"
+    && /^[a-z]+$/i.test(word.word)
+    && word.word.length >= MIN_WORD_LENGTH
+    && word.word.length <= MAX_WORD_LENGTH;
 }
 
-function studyPriority(word) {
+function hardStudyScore(word) {
   const rank = frequencyRank(word);
-  const difficultyBonus = word.difficulty === "hard" ? 8000 : word.difficulty === "medium" ? 3000 : 0;
-  const greOnlyBonus = (word.exam_tags || []).length === 1 ? 2500 : 0;
-  return rank - difficultyBonus - greOnlyBonus;
+  const rarityScore = Math.min(rank, 50000) / 1000;
+  const lengthScore = Math.min(Math.max(word.word.length - 5, 0), 8) * 2.5;
+  const lengthBandScore = word.word.length >= 6 && word.word.length <= 14 ? 8 : 0;
+  return rarityScore + lengthScore + lengthBandScore;
 }
 
 function frequencyRank(word) {
