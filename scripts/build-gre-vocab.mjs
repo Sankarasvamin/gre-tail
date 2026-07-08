@@ -9,6 +9,7 @@ const ECDICT_LICENSE = "MIT";
 const rawPath = resolve("data/vendor/ecdict.csv");
 const outputPath = resolve("data/gre_words.json");
 const maxWords = Number(process.env.MAX_WORDS) || 1200;
+const BASIC_EXAM_TAGS = new Set(["zk", "gk", "cet4"]);
 
 const existingExamples = loadExistingExamples(resolve("data/gre_words.sample.json"));
 
@@ -17,12 +18,20 @@ await ensureDownloaded(ECDICT_URL, rawPath);
 const csv = readFileSync(rawPath, "utf8");
 const rows = parseCsv(csv);
 const [header, ...records] = rows;
+if (!header || !header.includes("word") || !header.includes("tag")) {
+  throw new Error(`Invalid ECDICT CSV at ${rawPath}; refusing to overwrite ${outputPath}.`);
+}
 const columns = Object.fromEntries(header.map((name, index) => [name, index]));
 
 const importedWords = records
   .map((row) => rowToWord(row, columns))
   .filter(Boolean)
+  .filter(isGreStudyWord)
+  .sort((left, right) => studyPriority(left) - studyPriority(right) || left.word.localeCompare(right.word))
   .slice(0, maxWords);
+if (importedWords.length < 4) {
+  throw new Error(`Only found ${importedWords.length} GRE words; refusing to overwrite ${outputPath}.`);
+}
 const words = withDistractors(importedWords);
 
 writeFileSync(outputPath, `${JSON.stringify(words, null, 2)}\n`, "utf8");
@@ -129,6 +138,27 @@ function inferDifficulty(word, tag) {
   if (word.length >= 11) return "hard";
   if (word.length >= 8 || tag.includes("toefl")) return "medium";
   return "easy";
+}
+
+function isGreStudyWord(word) {
+  return !(word.exam_tags || []).some((tag) => BASIC_EXAM_TAGS.has(tag));
+}
+
+function studyPriority(word) {
+  const rank = frequencyRank(word);
+  const difficultyBonus = word.difficulty === "hard" ? 8000 : word.difficulty === "medium" ? 3000 : 0;
+  const greOnlyBonus = (word.exam_tags || []).length === 1 ? 2500 : 0;
+  return rank - difficultyBonus - greOnlyBonus;
+}
+
+function frequencyRank(word) {
+  const ranks = [word.frequency?.bnc, word.frequency?.contemporary]
+    .map((rank) => Number(rank))
+    .filter((rank) => Number.isFinite(rank) && rank > 0);
+  if (ranks.length === 0) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
 }
 
 function loadExistingExamples(path) {

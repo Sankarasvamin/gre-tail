@@ -6,6 +6,7 @@ const PROGRESS_KEY = "gre-tail-progress-v1";
 const SESSION_KEY = "gre-tail-session-v1";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MASTERED_LEVEL = 3;
+const RECENT_WORD_LIMIT = 8;
 const VALID_SOURCE_TYPES = new Set(["original", "public_domain", "open_licensed", "manual_web_quote", "user_note"]);
 
 const state = {
@@ -14,7 +15,8 @@ const state = {
   progress: {},
   session: {
     date: todayKey(),
-    completed: 0
+    completed: 0,
+    recentWordIds: []
   },
   currentQuestion: null,
   answered: false
@@ -25,11 +27,13 @@ const els = {
   error: document.querySelector("#error-state"),
   quiz: document.querySelector("#quiz"),
   word: document.querySelector("#word"),
+  wordPhonetic: document.querySelector("#word-phonetic"),
   wordProgress: document.querySelector("#word-progress"),
   options: document.querySelector("#options"),
   feedback: document.querySelector("#feedback"),
   resultBadge: document.querySelector("#result-badge"),
   correctAnswer: document.querySelector("#correct-answer"),
+  correctPhonetic: document.querySelector("#correct-phonetic"),
   definitionEn: document.querySelector("#definition-en"),
   optionExplanations: document.querySelector("#option-explanations"),
   exampleEn: document.querySelector("#example-en"),
@@ -74,7 +78,7 @@ function bindEvents() {
     localStorage.removeItem(PROGRESS_KEY);
     localStorage.removeItem(SESSION_KEY);
     state.progress = {};
-    state.session = { date: todayKey(), completed: 0 };
+    state.session = { date: todayKey(), completed: 0, recentWordIds: [] };
     renderStats();
     showNextQuestion();
   });
@@ -149,36 +153,41 @@ function showNextQuestion() {
 }
 
 function selectNextWord(words, progress) {
-  const now = Date.now();
-  const unseen = words.filter((word) => !progress[word.id]);
-  if (unseen.length > 0) {
-    return randomItem(unseen);
-  }
-
-  const due = words.filter((word) => {
-    const item = progress[word.id];
-    return item && new Date(item.next_review_at).getTime() <= now;
-  });
-  if (due.length > 0) {
-    return weightedPick(due, progress);
-  }
-
   return weightedPick(words, progress);
 }
 
 function weightedPick(words, progress) {
-  const weighted = [];
-  words.forEach((word) => {
+  const recentWordIds = new Set(Array.isArray(state.session.recentWordIds) ? state.session.recentWordIds : []);
+  const weighted = words.map((word) => {
     const item = progress[word.id] || createEmptyProgress(word.id);
-    let weight = 2;
-    if (item.last_answer_correct === false) weight += 8;
-    if (item.mastery_level >= MASTERED_LEVEL) weight = 1;
-    if (item.wrong_count > item.correct_count) weight += 3;
-    for (let index = 0; index < weight; index += 1) {
-      weighted.push(word);
+    const seenCount = Number(item.seen_count) || 0;
+    const masteryLevel = Number(item.mastery_level) || 0;
+    const dueAt = new Date(item.next_review_at).getTime();
+    let weight = getFrequencyWeight(word) * getDifficultyWeight(word);
+
+    if (seenCount === 0) {
+      weight *= 3;
     }
+    if (Number.isFinite(dueAt) && dueAt <= Date.now()) {
+      weight *= 2;
+    }
+    if (item.last_answer_correct === false) {
+      weight *= 4;
+    }
+    if ((Number(item.wrong_count) || 0) > (Number(item.correct_count) || 0)) {
+      weight *= 1.8;
+    }
+    if (masteryLevel >= MASTERED_LEVEL) {
+      weight *= 0.3;
+    }
+    if (recentWordIds.has(word.id)) {
+      weight *= 0.15;
+    }
+
+    return { word, weight };
   });
-  return randomItem(weighted);
+
+  return weightedRandom(weighted);
 }
 
 function createQuestion(word, allWords) {
@@ -195,6 +204,7 @@ function buildOptions(word, allWords) {
     text: word.correct_cn,
     wordId: word.id,
     word: word.word,
+    phonetic: word.phonetic || "",
     isCorrect: true,
     explanation: `正确释义：${word.correct_cn}`,
     definitionEn: word.definition_en
@@ -247,6 +257,8 @@ function addWrongOption(optionMap, { text, word, definitionEn, note }) {
 function renderQuestion(question) {
   const item = state.progress[question.word.id];
   els.word.textContent = question.word.word;
+  els.wordPhonetic.textContent = formatPhonetic(question.word.phonetic);
+  els.wordPhonetic.hidden = !question.word.phonetic;
   els.wordProgress.textContent = item
     ? `已见 ${item.seen_count} 次 · 掌握等级 ${item.mastery_level}`
     : "新词优先";
@@ -272,7 +284,7 @@ function handleAnswer(selectedOption, selectedButton) {
   const question = state.currentQuestion;
   const isCorrect = selectedOption.isCorrect;
   updateProgress(question.word, isCorrect);
-  updateSession();
+  updateSession(question.word.id);
   renderStats();
   lockOptions(selectedOption, selectedButton);
   renderFeedback(question, selectedOption, isCorrect);
@@ -310,11 +322,13 @@ function createEmptyProgress(wordId) {
   };
 }
 
-function updateSession() {
+function updateSession(wordId) {
   if (state.session.date !== todayKey()) {
-    state.session = { date: todayKey(), completed: 0 };
+    state.session = { date: todayKey(), completed: 0, recentWordIds: [] };
   }
   state.session.completed += 1;
+  state.session.recentWordIds = [wordId, ...(state.session.recentWordIds || []).filter((id) => id !== wordId)]
+    .slice(0, RECENT_WORD_LIMIT);
   saveJson(SESSION_KEY, state.session);
 }
 
@@ -341,6 +355,7 @@ function renderFeedback(question, selectedOption, isCorrect) {
   els.resultBadge.className = `result-badge ${isCorrect ? "correct" : "wrong"}`;
   els.resultBadge.textContent = isCorrect ? "正确" : "错误";
   els.correctAnswer.textContent = question.word.correct_cn;
+  els.correctPhonetic.textContent = formatPhonetic(question.word.phonetic);
   els.definitionEn.textContent = question.word.definition_en;
   els.optionExplanations.innerHTML = "";
 
@@ -372,6 +387,10 @@ function getExampleForWord(word) {
   };
 }
 
+function formatPhonetic(phonetic) {
+  return phonetic ? `/${phonetic}/` : "暂无音标";
+}
+
 function getExampleScore(example) {
   return Number(example.quality?.score) || 0;
 }
@@ -400,11 +419,12 @@ function renderStats() {
 
 function normalizeSession(session) {
   if (!session || session.date !== todayKey()) {
-    return { date: todayKey(), completed: 0 };
+    return { date: todayKey(), completed: 0, recentWordIds: [] };
   }
   return {
     date: session.date,
-    completed: Number(session.completed) || 0
+    completed: Number(session.completed) || 0,
+    recentWordIds: Array.isArray(session.recentWordIds) ? session.recentWordIds.slice(0, RECENT_WORD_LIMIT) : []
   };
 }
 
@@ -427,6 +447,44 @@ function todayKey() {
 
 function randomItem(items) {
   return items[Math.floor(Math.random() * items.length)];
+}
+
+function weightedRandom(items) {
+  const totalWeight = items.reduce((sum, item) => sum + Math.max(0, item.weight), 0);
+  if (totalWeight <= 0) {
+    return randomItem(items).word;
+  }
+
+  let threshold = Math.random() * totalWeight;
+  for (const item of items) {
+    threshold -= Math.max(0, item.weight);
+    if (threshold <= 0) {
+      return item.word;
+    }
+  }
+  return items[items.length - 1].word;
+}
+
+function getFrequencyWeight(word) {
+  const ranks = [word.frequency?.bnc, word.frequency?.contemporary]
+    .map((rank) => Number(rank))
+    .filter((rank) => Number.isFinite(rank) && rank > 0);
+  if (ranks.length === 0) {
+    return 1;
+  }
+
+  const averageRank = ranks.reduce((sum, rank) => sum + rank, 0) / ranks.length;
+  if (averageRank <= 3000) return 8;
+  if (averageRank <= 8000) return 6;
+  if (averageRank <= 15000) return 4;
+  if (averageRank <= 30000) return 2;
+  return 1;
+}
+
+function getDifficultyWeight(word) {
+  if (word.difficulty === "hard") return 2.2;
+  if (word.difficulty === "medium") return 1.2;
+  return 0.35;
 }
 
 function shuffle(items) {
